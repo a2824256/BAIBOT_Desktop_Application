@@ -7,6 +7,7 @@ from PySide2.QtCore import QFile
 from PySide2 import QtCore
 from PySide2.QtUiTools import QUiLoader
 from Ui_Main import Ui_Main
+import threading as th
 
 
 class Main(QMainWindow):
@@ -16,7 +17,14 @@ class Main(QMainWindow):
         self.ui.setupUi(self)
 
     def updateStatusBar(self, str):
-        self.ui.statusbar.showMessage(str)
+        self.ui.statusBar.showMessage(str)
+
+    # def logic(self):
+    #     self.ui.pushButton.connect(self.output)
+
+    # def output(self):
+    #     self.ui.textEdit.setText("test")
+
 
 if __name__ == "__main__":
     app = QApplication([])
