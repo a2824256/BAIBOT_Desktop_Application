@@ -29,6 +29,11 @@ class Main(QMainWindow):
 if __name__ == "__main__":
     app = QApplication([])
     widget = Main()
-    widget.updateStatusBar("Ready")
+    widget.showFullScreen()
+    widget.updateStatusBar("系统已准备,  Avatar version: 1.0")
     widget.show()
     sys.exit(app.exec_())
+
+# QTabWidget::tab-bar{
+#         alignment:left;
+# }
