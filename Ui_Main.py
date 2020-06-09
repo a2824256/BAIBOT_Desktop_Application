@@ -7,15 +7,21 @@
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
+import time
 import subprocess
 import threading as th
 from PySide2.QtCore import (QCoreApplication, QDate, QDateTime, QMetaObject,
     QObject, QPoint, QRect, QSize, QTime, QUrl, Qt, Signal, Slot)
 from PySide2.QtGui import (QBrush, QColor, QConicalGradient, QCursor, QFont,
     QFontDatabase, QIcon, QKeySequence, QLinearGradient, QPalette, QPainter,
-    QPixmap, QRadialGradient)
+    QPixmap, QRadialGradient, QImage)
 from PySide2.QtWidgets import *
+import pyrealsense2 as rs
+import numpy as np
+import json
 
+DELAY = 1
+cmd_force = "rosrun serialPort forceSerial"
 
 class Ui_Main(QObject):
     output_str1 = Signal(str)
@@ -26,6 +32,8 @@ class Ui_Main(QObject):
     output_str6 = Signal(str)
     output_str7 = Signal(str)
     output_str8 = Signal(str)
+    dis_update = Signal(QPixmap)
+    force = Signal(float)
     def setupUi(self, Main):
         if not Main.objectName():
             Main.setObjectName(u"Main")
@@ -405,6 +413,8 @@ class Ui_Main(QObject):
         self.output_str6.connect(self.update6)
         self.output_str7.connect(self.update7)
         self.output_str8.connect(self.update8)
+        self.dis_update.connect(self.camera_view)
+        self.force.connect(self.update_force)
         self.retranslateUi(Main)
 
         self.tabWidget.setCurrentIndex(0)
@@ -536,7 +546,60 @@ class Ui_Main(QObject):
     def update8(self, str):
         self.content8.insertPlainText(str)
 
+    def camera_view(self, c):
+        self.label_12.setPixmap(c)
+        self.label_12.setScaledContents(True)
 
+    def open_camera(self):
+        t = th.Thread(target=self.open_realsense)
+        t.start()
+
+    @Slot(float)
+    def update_force(self, force):
+        self.NDisplay.setText(force)
+
+    def force_out(self):
+        for path in self.run_force():
+            print(str(path))
+            json_arr = json.loads(str(path))
+            self.force.emit(str(json_arr['force']))
+
+    def run_force(self):
+        process = subprocess.Popen(cmd_force, stdout=subprocess.PIPE, shell=True)
+        while True:
+            line = process.stdout.readline().rstrip()
+            if not line:
+                break
+            yield line
+
+    def open_realsense(self):
+        pipeline = rs.pipeline()
+        config = rs.config()
+        config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
+        config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
+
+        profile = pipeline.start(config)
+        frames = pipeline.wait_for_frames()
+        color_frame = frames.get_color_frame()
+        # Color Intrinsics
+        intr = color_frame.profile.as_video_stream_profile().intrinsics
+
+        align_to = rs.stream.color
+        align = rs.align(align_to)
+        while True:
+            frames = pipeline.wait_for_frames()
+            aligned_frames = align.process(frames)
+
+            aligned_depth_frame = aligned_frames.get_depth_frame()
+            color_frame = aligned_frames.get_color_frame()
+            if not aligned_depth_frame or not color_frame:
+                continue
+            c = np.asanyarray(color_frame.get_data())
+            qimage = QImage(c, 1280, 720, QImage.Format_BGR888)
+            pixmap = QPixmap.fromImage(qimage)
+            self.dis_update.emit(pixmap)
+            time.sleep(DELAY)
+        pipeline.stop()
 
     def retranslateUi(self, Main):
         Main.setWindowTitle(QCoreApplication.translate("Main", u"Avatar", None))
