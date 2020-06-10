@@ -5,10 +5,10 @@ Avatar desktop application by pyside2
 #### 控制页
 ![sc](https://github.com/a2824256/Avatar_Desktop_Application/blob/master/sc4.jpg)
 
-#### 调试页
+#### 调试页(多个终端ping百度域名)
 ![sc](https://github.com/a2824256/Avatar_Desktop_Application/blob/master/sc1.jpg)
 
-#### 设置页
+#### 设置页（设置每个终端执行的shell指令）
 ![sc](https://github.com/a2824256/Avatar_Desktop_Application/blob/master/sc3.jpg)
 
 # 测试效果
