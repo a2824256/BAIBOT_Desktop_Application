@@ -14,14 +14,54 @@ from PySide2.QtCore import (QCoreApplication, QDate, QDateTime, QMetaObject,
     QObject, QPoint, QRect, QSize, QTime, QUrl, Qt, Signal, Slot)
 from PySide2.QtGui import (QBrush, QColor, QConicalGradient, QCursor, QFont,
     QFontDatabase, QIcon, QKeySequence, QLinearGradient, QPalette, QPainter,
-    QPixmap, QRadialGradient, QImage)
+    QPixmap, QRadialGradient, QImage, QMouseEvent)
 from PySide2.QtWidgets import *
 import pyrealsense2 as rs
 import numpy as np
 import json
+from math import *
 
-DELAY = 1
+FPS = 30
+DELAY = 0
+cmd_ros_core = "roscore"
 cmd_force = "rosrun serialPort forceSerial"
+WIDTH = 1280
+HEIGHT = 720
+
+class AIRSDisplay(QLabel):
+    last_x = 0
+    last_y = 0
+    last_z = 0
+    pos = QPoint
+    frame = None
+    paren = None
+    depth_intr = None
+    def __init__(self, parent=None):
+        self.paren = parent
+        super().__init__(parent)
+        self.setMouseTracking(True)
+
+    def mousePressEvent(self, ev:QMouseEvent):
+        self.pos = ev.pos()
+        real_x = round(self.pos.x()/self.width()*WIDTH)
+        real_y = round(self.pos.y()/self.height()*HEIGHT)
+        d = self.frame.get_distance(real_x,real_y)
+        point = rs.rs2_deproject_pixel_to_point(intrin=self.depth_intr,pixel=[real_x,real_y],depth=d)
+        distance = sqrt(pow(point[0] - self.last_x, 2) + pow(point[1] - self.last_y, 2) + pow(d - self.last_z, 2))
+        QMessageBox().about(self.paren, "相机坐标系",
+                              "--------本次坐标--------\n"
+                              "X=" + str(point[0]) + "\nY=" + str(point[1]) + "\nDepth=" + str(point[2])
+                              + "\n--------上次坐标--------\n" + "X=" + str(self.last_x) + "\nY=" + str(self.last_y) + "\nDepth=" + str(self.last_z)
+                            + "\n-------distance----------\ndistance=" + str(distance)
+
+                              )
+        self.last_x = point[0]
+        self.last_y = point[1]
+        self.last_z = point[2]
+
+    def setting(self, f, depth_intr):
+        self.frame = f
+        self.depth_intr = depth_intr
 
 class Ui_Main(QObject):
     output_str1 = Signal(str)
@@ -32,8 +72,8 @@ class Ui_Main(QObject):
     output_str6 = Signal(str)
     output_str7 = Signal(str)
     output_str8 = Signal(str)
+    force = Signal(str)
     dis_update = Signal(QPixmap)
-    force = Signal(float)
     def setupUi(self, Main):
         if not Main.objectName():
             Main.setObjectName(u"Main")
@@ -157,7 +197,7 @@ class Ui_Main(QObject):
         self.groupBox_4.setObjectName(u"groupBox_4")
         self.groupBox_4.setGeometry(QRect(440, 20, 1461, 971))
         self.groupBox_4.setFont(font1)
-        self.label_12 = QLabel(self.groupBox_4)
+        self.label_12 = AIRSDisplay(self.groupBox_4)
         self.label_12.setObjectName(u"label_12")
         self.label_12.setGeometry(QRect(10, 50, 1441, 911))
         self.label_12.setStyleSheet(u"background-color: rgb(0, 0, 0);")
@@ -416,12 +456,15 @@ class Ui_Main(QObject):
         self.dis_update.connect(self.camera_view)
         self.force.connect(self.update_force)
         self.retranslateUi(Main)
-
+        self.label_12.setMouseTracking(True)
         self.tabWidget.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(Main)
-    # setupUi
+
+
+    def test(self,event:QMouseEvent):
+        print(event.pos())
 
     def start_thread1(self):
         t1 = th.Thread(target=self.output1)
@@ -458,49 +501,41 @@ class Ui_Main(QObject):
 
     def output1(self):
         command = self.cmd1.text()
-        print(command)
         for path in self.run(command):
             self.output_str1.emit(str(path) + '\n')
 
     def output2(self):
         command = self.cmd2.text()
-        print(command)
         for path in self.run(command):
             self.output_str2.emit(str(path) + '\n')
 
     def output3(self):
         command = self.cmd3.text()
-        print(command)
         for path in self.run(command):
             self.output_str3.emit(str(path) + '\n')
 
     def output4(self):
         command = self.cmd4.text()
-        print(command)
         for path in self.run(command):
             self.output_str4.emit(str(path) + '\n')
 
     def output5(self):
         command = self.cmd5.text()
-        print(command)
         for path in self.run(command):
             self.output_str5.emit(str(path) + '\n')
 
     def output6(self):
         command = self.cmd6.text()
-        print(command)
         for path in self.run(command):
             self.output_str6.emit(str(path) + '\n')
 
     def output7(self):
         command = self.cmd7.text()
-        print(command)
         for path in self.run(command):
             self.output_str7.emit(str(path) + '\n')
 
     def output8(self):
         command = self.cmd8.text()
-        print(command)
         for path in self.run(command):
             self.output_str8.emit(str(path) + '\n')
 
@@ -554,15 +589,32 @@ class Ui_Main(QObject):
         t = th.Thread(target=self.open_realsense)
         t.start()
 
-    @Slot(float)
+    @Slot(str)
     def update_force(self, force):
+        if float(force) > 10:
+            self.NWarning.setStyleSheet("background-color:red;border-radius:17px;")
+        else:
+            self.NWarning.setStyleSheet("background-color:rgb(0, 255, 0);border-radius:17px;")
         self.NDisplay.setText(force)
+
+    def force_process(self):
+        t1 = th.Thread(target=self.run_roscore)
+        t1.start()
+        time.sleep(1)
+        t2 = th.Thread(target=self.force_out)
+        t2.start()
 
     def force_out(self):
         for path in self.run_force():
-            print(str(path))
-            json_arr = json.loads(str(path))
-            self.force.emit(str(json_arr['force']))
+            try:
+                s = str(path, encoding="utf8")
+                js = json.loads(s)
+                self.force.emit(js['force'])
+            except:
+                continue
+
+    def run_roscore(self):
+        process = subprocess.Popen(cmd_ros_core, stdout=subprocess.PIPE, shell=True)
 
     def run_force(self):
         process = subprocess.Popen(cmd_force, stdout=subprocess.PIPE, shell=True)
@@ -575,8 +627,8 @@ class Ui_Main(QObject):
     def open_realsense(self):
         pipeline = rs.pipeline()
         config = rs.config()
-        config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
-        config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
+        config.enable_stream(rs.stream.depth, WIDTH, HEIGHT, rs.format.z16, FPS)
+        config.enable_stream(rs.stream.color, WIDTH, HEIGHT, rs.format.bgr8, FPS)
 
         profile = pipeline.start(config)
         frames = pipeline.wait_for_frames()
@@ -591,6 +643,8 @@ class Ui_Main(QObject):
             aligned_frames = align.process(frames)
 
             aligned_depth_frame = aligned_frames.get_depth_frame()
+            depth_intr = aligned_depth_frame.profile.as_video_stream_profile().intrinsics
+            self.label_12.setting(aligned_depth_frame, depth_intr)
             color_frame = aligned_frames.get_color_frame()
             if not aligned_depth_frame or not color_frame:
                 continue
