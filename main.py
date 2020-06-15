@@ -32,11 +32,11 @@ if __name__ == "__main__":
     widget.showFullScreen()
     widget.updateStatusBar("系统已准备,  Avatar version: 1.0")
     widget.show()
-    widget.ui.open_camera()
     try:
-        widget.ui.force_out()
+        # widget.ui.force_process()
+        widget.ui.open_camera()
     except:
-        print("force dead")
+        print("110")
     sys.exit(app.exec_())
 
 # QTabWidget::tab-bar{
