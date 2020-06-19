@@ -50,8 +50,8 @@ class AIRSDisplay(QLabel):
         distance = sqrt(pow(point[0] - self.last_x, 2) + pow(point[1] - self.last_y, 2) + pow(d - self.last_z, 2))
         QMessageBox().about(self.paren, "相机坐标系",
                               "--------本次坐标--------\n"
-                              "X=" + str(point[0]) + "\nY=" + str(point[1]) + "\nDepth=" + str(point[2])
-                              + "\n--------上次坐标--------\n" + "X=" + str(self.last_x) + "\nY=" + str(self.last_y) + "\nDepth=" + str(self.last_z)
+                              + str(point[0]) + "," + str(point[1]) + "," + str(point[2])
+                              + "\n--------上次坐标--------\n" + str(self.last_x) + "," + str(self.last_y) + "," + str(self.last_z)
                             + "\n-------distance----------\ndistance=" + str(distance)
 
                               )
