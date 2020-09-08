@@ -1,5 +1,5 @@
-# Avatar_Desktop_Application
-Avatar desktop application by pyside2
+# BAIBOT_Desktop_Application
+BAIBOT desktop application by pyside2
 
 # GUI
 #### 控制页
