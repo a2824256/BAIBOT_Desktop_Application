@@ -6,7 +6,7 @@ from PySide2.QtWidgets import QApplication, QMainWindow
 from PySide2.QtCore import QFile
 from PySide2 import QtCore
 from PySide2.QtUiTools import QUiLoader
-from Ui_Main_xxx import Ui_Main
+from Ui_Main import Ui_Main
 import threading as th
 import rospy
 from teleoperation.msg import Gui
